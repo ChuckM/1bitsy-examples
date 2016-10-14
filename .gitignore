@@ -1,0 +1,7 @@
+*.cscope
+*.o
+*.d
+*.a
+*.elf
+*.map
+
