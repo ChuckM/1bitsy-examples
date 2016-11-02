@@ -18,7 +18,7 @@ typedef struct  __time_struct {
 	int			ms;		/* mS (0 - 999) */
 } simple_time;
 	
-char * time_stamp(simple_time *t);
+char * time_stamp(simple_time *t, int hires);
 void time_set(void);
 simple_time *time_get(uint32_t tm);
 

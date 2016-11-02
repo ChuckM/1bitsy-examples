@@ -51,8 +51,11 @@ static const char *months[13] = {
 	"UNK"
 };
 
-/* not thread safe, but not really an issue either */
-static char __time_stamp[32];
+/* not thread safe, but not really an issue either 
+ *			Regular:  Mon Oct 31 2016, 14:02:05 PDT
+ *	High Resolution:  Mon Oct 31 2016, 14:02:05.023 PDT
+ */
+static char __time_stamp[36];
 static char __time_zone[4];
 
 simple_time *
@@ -91,10 +94,15 @@ time_get(uint32_t tm) {
 
 /* Basically a cheap implementation of ctime */
 char *
-time_stamp(simple_time *t)
+time_stamp(simple_time *t, int hires)
 {
-	snprintf(&__time_stamp[0], 32, "%3s %3s %2d %4d, %2d:%02d:%02d %3s",
-		t->dn, t->mn, t->dy, t->yr, t->hh, t->mm, t->ss, t->tz);
+	if (hires) {
+		snprintf(&__time_stamp[0], 36, "%3s %3s %2d %4d, %2d:%02d:%02d.%03d %3s",
+			t->dn, t->mn, t->dy, t->yr, t->hh, t->mm, t->ss, t->ms, t->tz);
+	} else {
+		snprintf(&__time_stamp[0], 36, "%3s %3s %2d %4d, %2d:%02d:%02d %3s",
+			t->dn, t->mn, t->dy, t->yr, t->hh, t->mm, t->ss, t->tz);
+	}
 	return __time_stamp;
 }
 
@@ -161,6 +169,6 @@ time_set(void)
 	/* now combine it all together, adjust by what mtime is currently */
 	__epoch = ((2016 - year) * YEAR_SEC + day * DAY_SEC + hh * HR_SEC + mm * MIN_SEC + ss) - (tm / 1000);
 	t = time_get(tm);
-	printf("\nDate set to : %s\n", time_stamp(t));
+	printf("\nDate set to : %s\n", time_stamp(t, 1));
 }
 

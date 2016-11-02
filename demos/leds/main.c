@@ -267,6 +267,7 @@ draw_clock(uint32_t tm)
 }
 
 int color;
+int fast_mode = 0; /* .1 sec or .0 sec mode */
 uint32_t last_time = 0;
 
 void qr_clock(uint32_t tm);
@@ -277,12 +278,17 @@ qr_clock(uint32_t tm)
 	int x, y;
 	uint32_t this_time;
 	QRcode *my_qr;
+	simple_time *t;
 
-	this_time = tm / 1000; /* time in seconds */
+	t = time_get(tm);
+	this_time = t->ss * 10;
+	if (fast_mode) {
+		this_time += (t->ms / 100);
+	}
 	/* only update if the second changes */
 	if (last_time != this_time) {
 		last_time = this_time;
-		my_qr = QRcode_encodeString(time_stamp(time_get(tm)), 0, QR_ECLEVEL_Q, QR_MODE_8, 1);
+		my_qr = QRcode_encodeString(time_stamp(t, fast_mode), 0, QR_ECLEVEL_Q, QR_MODE_8, 1);
 		if (my_qr != NULL) {
 			gfx_fillScreen(color);
 			for (x = 0; x < my_qr->width; x++) {
@@ -384,8 +390,12 @@ main(void)
 				clock_running = 0;
 				qclock_running++;
 				break;
+			case 'f':
+				fast_mode = (fast_mode != 0) ? 0 : 1;
+				printf("Fast mode: %s\n", (fast_mode) ? "ON" : "OFF");
+				break;
 			case 't':
-				printf(" TIME: %s\n", time_stamp(time_get(mtime())));
+				printf(" TIME: %s\n", time_stamp(time_get(mtime()),1));
 				break;
 			case 'T':
 			case 'd':
