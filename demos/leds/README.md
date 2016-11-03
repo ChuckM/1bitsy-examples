@@ -42,7 +42,7 @@ By measuring that on my oscilloscope I can see that it takes about 120uS to cloc
 of the display. That is 12% of one Systick interval. Since the display is on when it isn't being clocked, 
 when a row is active it is on 88% of the time which makes it pretty bright.
 
-[leds]: https://www.adafruit.com/product/2279
+[leds]: http://www.adafruit.com/product/2279
 
 [1bitsy]: http://1bitsy.org/
 
