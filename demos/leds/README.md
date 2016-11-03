@@ -1,14 +1,14 @@
 64 x 32 LED Example
 -------------------
 
-This code let me play with a couple of the AdaFruit [64 x 32 LED displays](leds).
+This code let me play with a couple of the AdaFruit [64 x 32 LED displays](https://www.adafruit.com/product/2279).
 I was curious how challenging it would be to keep the display updated. The answer
 was not as bad as I thought.
 
 ##Modes
 
-There are several modes here, the [1Bitsy](1bitsy) is hooked up to a TTL to Serial
-port converter (in my case the [BlackMagic Probe](bmp)) which provides the "user interface"
+There are several modes here, the [1Bitsy](http://1bitsy.org/) is hooked up to a TTL to Serial
+port converter (in my case the [BlackMagic Probe](https://1bitsquared.com/collections/embedded-hardware/products/black-magic-probe)) which provides the "user interface"
 (which is generous). Commands are simple
 * T or d - **set the time and date** (this just notes the time so that the clocks show something useful.
 * f - **fast mode** which runs the QRClock at 10 frames per second rather than one frame per second
