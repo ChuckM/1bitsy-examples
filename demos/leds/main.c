@@ -272,10 +272,32 @@ uint32_t last_time = 0;
 
 void qr_clock(uint32_t tm);
 
+int qr_ecc = QR_ECLEVEL_Q;
+void rotate_ecc_level(void);
+
+void
+rotate_ecc_level(void)
+{
+	switch (qr_ecc) {
+	case QR_ECLEVEL_L :
+		qr_ecc = QR_ECLEVEL_M;
+		break;
+	case QR_ECLEVEL_M :
+		qr_ecc = QR_ECLEVEL_Q;
+		break;
+	case QR_ECLEVEL_Q :
+		qr_ecc = QR_ECLEVEL_H;
+		break;
+	default:
+		qr_ecc = QR_ECLEVEL_L;
+		break;
+	}
+}
+
 void
 qr_clock(uint32_t tm)
 {
-	int x, y;
+	int x, y, inset, size;
 	uint32_t this_time;
 	QRcode *my_qr;
 	simple_time *t;
@@ -288,13 +310,24 @@ qr_clock(uint32_t tm)
 	/* only update if the second changes */
 	if (last_time != this_time) {
 		last_time = this_time;
-		my_qr = QRcode_encodeString(time_stamp(t, fast_mode), 0, QR_ECLEVEL_Q, QR_MODE_8, 1);
+		my_qr = QRcode_encodeString(time_stamp(t, fast_mode), 0, qr_ecc, QR_MODE_8, 1);
 		if (my_qr != NULL) {
+			if ((my_qr->width * 2) < 64) {
+				inset = (64 - (my_qr->width * 2)) / 2;
+				size = 2;
+			} else {
+				inset = (64 - my_qr->width) / 2;
+				size = 1;
+			}
 			gfx_fillScreen(color);
 			for (x = 0; x < my_qr->width; x++) {
 				for (y = 0; y < my_qr->width; y++) {
 					if (*((my_qr->data) + y * my_qr->width + x) & 1) {
-						gfx_drawRect((x*2)+3, (y*2)+3, 2, 2, 0);
+						if (size == 1) {
+							gfx_drawPixel(x + inset, y + inset, 0);
+						} else {
+							gfx_drawRect((x*2)+inset, (y*2)+inset, 2, 2, 0);
+						}
 					}
 				}
 			}
@@ -396,6 +429,9 @@ main(void)
 				break;
 			case 't':
 				printf(" TIME: %s\n", time_stamp(time_get(mtime()),1));
+				break;
+			case 'e':
+				rotate_ecc_level();
 				break;
 			case 'T':
 			case 'd':
