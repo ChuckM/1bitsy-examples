@@ -95,6 +95,24 @@ void
 clock_two_rows(uint8_t *q1, uint8_t *q2, uint8_t *q3, uint8_t *q4)
 {
 	int	i;
+	/* clock in the new row(s) data */
+	q1 += 63;
+	q2 += 63;
+	for (i = 0; i < 64; i++) {
+		set_pin(GPIOB, p1[0], (*q1 & 0x4) != 0);
+		set_pin(GPIOB, p1[1], (*q1 & 0x2) != 0);
+		set_pin(GPIOB, p1[2], (*q1 & 0x1) != 0);
+		set_pin(GPIOB, p2[0], (*q2 & 0x4) != 0);
+		set_pin(GPIOB, p2[1], (*q2 & 0x2) != 0);
+		set_pin(GPIOB, p2[2], (*q2 & 0x1) != 0);
+		gpio_set(GPIOC, GPIO9);
+		gpio_clear(GPIOC, GPIO9);
+		q1--; q2--;
+	}
+
+/*	q3 += 63;
+	q4 += 63;
+*/
 	for (i = 0; i < 64; i++) {
 		set_pin(GPIOB, p1[0], (*q3 & 0x4) != 0);
 		set_pin(GPIOB, p1[1], (*q3 & 0x2) != 0);
@@ -107,20 +125,6 @@ clock_two_rows(uint8_t *q1, uint8_t *q2, uint8_t *q3, uint8_t *q4)
 		q3++; q4++;
 	}
 
-	q1 += 63;
-	q2 += 63;
-	/* clock in the new row(s) data */
-	for (i = 0; i < 64; i++) {
-		set_pin(GPIOB, p1[0], (*q1 & 0x4) != 0);
-		set_pin(GPIOB, p1[1], (*q1 & 0x2) != 0);
-		set_pin(GPIOB, p1[2], (*q1 & 0x1) != 0);
-		set_pin(GPIOB, p2[0], (*q2 & 0x4) != 0);
-		set_pin(GPIOB, p2[1], (*q2 & 0x2) != 0);
-		set_pin(GPIOB, p2[2], (*q2 & 0x1) != 0);
-		gpio_set(GPIOC, GPIO9);
-		gpio_clear(GPIOC, GPIO9);
-		q1--; q2--;
-	}
 }
 
 /* This is the LED display's "buffer" */
@@ -197,6 +201,76 @@ set_row(int row)
 		set_pin(GPIOB, row_gpios[i], (bits & 1) != 0);
 		bits = bits >> 1;
 	}
+}
+
+int gmt_clock;
+void draw_24hr_clock(uint32_t tm);
+
+void
+draw_24hr_clock(uint32_t tm)
+{
+	simple_time *t; 
+	int hh, mm, ss, ms;
+	int x0, x1, y0, y1;
+	int i;
+
+	t = time_get(tm);
+	
+	hh = t->hh;
+	mm = t->mm;
+	ss = t->ss;
+	ms = t->ms;
+
+
+	gfx_fillScreen(0);
+#ifdef GFX_CIRCLE
+	gfx_drawCircle(32,32,31, 2);
+#else
+#define CIRCLE_INC	5
+	for (i = 0; i < 360; i += CIRCLE_INC) {
+		x0 = 32.5 + 31.0 * (sin((float) i / 180.0 * M_PI));
+		y0 = 32.5 + 31.0 * (cos((float) i / 180.0 * M_PI));
+		x1 = 32.5 + 31.0 * (sin((float) (i + CIRCLE_INC) / 180.0 * M_PI));
+		y1 = 32.5 + 31.0 * (cos((float) (i + CIRCLE_INC) / 180.0 * M_PI));
+		gfx_drawLine(x0, y0, x1, y1, 2);
+	}
+#endif
+	gfx_setFont(GFX_FONT_SMALL);
+	gfx_setTextColor(4, 0);
+	gfx_setCursor(26, 11);
+	gfx_puts((unsigned char *)"24");
+	gfx_setCursor(54, 36);
+	gfx_puts((unsigned char *)"6");
+	gfx_setCursor(26, 60);
+	gfx_puts((unsigned char *)"12");
+	gfx_setCursor(4, 36);
+	gfx_puts((unsigned char *)"18");
+	for (i = 1; i < 60; i++) {
+
+		if ((i == 0) || (i == 15) || (i == 30) || (i == 45)) {
+			continue;
+		}
+		x1 = (int) (32.5 + 30.0 * (sin((float) i / 30.0 * M_PI)));
+		y1 = (int) (32.5 + 30.0 * (cos((float) i / 30.0 * M_PI)));
+		if ((i % 5) == 0) {
+			x0 = (int) (32.5 + 25.0 * (sin((float) i / 30.0 * M_PI)));
+			y0 = (int) (32.5 + 25.0 * (cos((float) i / 30.0 * M_PI)));
+			gfx_drawLine(x0, y0, x1, y1, 1);
+		} else {
+			gfx_drawPixel(x1, y1, 1);
+		}
+	}
+	/* rotate hands */
+	gfx_drawLine(32, 32, 32 + 25 * (sin((float) ss/30.0 * M_PI)),
+						 32 - 25 * (cos((float) ss/30.0 * M_PI)), 5);
+	gfx_drawLine(32, 32, 32 + 20 * (sin((float) mm/30.0 * M_PI)),
+						 32 - 20 * (cos((float) mm/30.0 * M_PI)), 2);
+	gfx_drawLine(32, 32, 32 + 15 * (sin(((float) hh + (float) mm / 60.0) / 12.0 * M_PI)),
+						 32 - 15 * (cos(((float) hh + (float) mm / 60.0) / 12.0 * M_PI)), 3);
+	gfx_drawLine(32, 32, 32 + 10 * (sin((float) ms/500.0 * M_PI)),
+						 32 - 10 * (cos((float) ms/500.0 * M_PI)), 1);
+	gfx_fillCircle(32,32,3,6);
+	do_swap++;
 }
 
 void
@@ -294,6 +368,8 @@ rotate_ecc_level(void)
 	}
 }
 
+int color_mode = 0;
+
 void
 qr_clock(uint32_t tm)
 {
@@ -322,11 +398,24 @@ qr_clock(uint32_t tm)
 			gfx_fillScreen(color);
 			for (x = 0; x < my_qr->width; x++) {
 				for (y = 0; y < my_qr->width; y++) {
+					int foo = *(my_qr->data + y * my_qr->width + x);
+					int cc = color;;
+					if (foo & 1) {
+						cc = 0;
+					}
+					if (color_mode) {
+						if (foo & 2) {
+							cc = 4;
+						}
+						if (foo & 0x80) {
+							cc = 1;
+						}
+					}
 					if (*((my_qr->data) + y * my_qr->width + x) & 1) {
 						if (size == 1) {
-							gfx_drawPixel(x + inset, y + inset, 0);
+							gfx_drawPixel(x + inset, y + inset, cc);
 						} else {
-							gfx_drawRect((x*2)+inset, (y*2)+inset, 2, 2, 0);
+							gfx_drawRect((x*2)+inset, (y*2)+inset, 2, 2, cc);
 						}
 					}
 				}
@@ -337,12 +426,15 @@ qr_clock(uint32_t tm)
 	}
 }
 
+int flip_it = 0;
+
 int
 main(void)
 {
 	int cnt;
 	int clock_running = 0;
 	int qclock_running = 0;
+	int refresh = 1;
 
 	printf("LED Panel Demo\n");
 	draw_buf = &buf1[0];
@@ -433,15 +525,36 @@ main(void)
 			case 'e':
 				rotate_ecc_level();
 				break;
+			case 'r':
+				console_puts("Enter delay count (refresh) [1+]: ");
+				refresh = console_getnumber();
+				printf("\nRefresh set to %d\n", refresh);
+				set_clock_hook(next_pair, refresh);
+				break;
 			case 'T':
 			case 'd':
 				time_set();
 				break;
+			case 'P':
+				color_mode = (color_mode == 0) ? 1 : 0;
+				break;
+			case '2':
+				gmt_clock = (gmt_clock == 0) ? 1 : 0;
+				break;
+			case 'i':
+				flip_it = (flip_it == 0) ? 1 : 0;
+				gfx_setMirrored(flip_it);
+				break;
+				
 			default:
 				break;
 		}
 		if (clock_running) {
-			draw_clock(mtime());
+			if (gmt_clock) {
+				draw_24hr_clock(mtime());
+			} else {
+				draw_clock(mtime());
+			}
 		} else if (qclock_running) {
 			qr_clock(mtime());
 		}

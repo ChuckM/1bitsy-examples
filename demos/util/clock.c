@@ -28,6 +28,7 @@ null_func(void)
 static void (*clk_hook)(void);
 static volatile int hook_interval;
 static volatile int hook_count;
+static volatile int mini_count;
 
 /* milliseconds since boot */
 static volatile uint32_t system_millis;
@@ -37,9 +38,13 @@ static volatile uint32_t system_delay;
 /* Called when systick fires */
 void sys_tick_handler(void)
 {
-	system_millis++;
-	if (system_delay != 0) {
-		system_delay--;
+	mini_count++;
+	mini_count &= 0x3;
+	if (mini_count == 0) {
+		system_millis++;
+		if (system_delay != 0) {
+			system_delay--;
+		}
 	}
 	/* process the systick hook function if set */
 	if (hook_interval != 0) {
@@ -91,7 +96,7 @@ void clock_setup(void)
 
 	set_clock_hook(null_func, 0);
 	/* clock rate / 168000 to get 1mS interrupt rate */
-	systick_set_reload(168000);
+	systick_set_reload(168000/4);
 	systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
 	systick_counter_enable();
 
