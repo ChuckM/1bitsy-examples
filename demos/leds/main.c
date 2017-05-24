@@ -3,6 +3,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
@@ -19,6 +20,7 @@ void clock_two_rows(uint8_t *q1, uint8_t *q2, uint8_t *q3, uint8_t *q4);
 void next_pair(void);
 void draw_pixel(int x, int y, uint16_t color);
 void draw_clock(uint32_t time);
+unsigned char *time_string(uint32_t t);
 
 /*
  * ### Signals matching ###
@@ -128,8 +130,11 @@ clock_two_rows(uint8_t *q1, uint8_t *q2, uint8_t *q3, uint8_t *q4)
 }
 
 /* This is the LED display's "buffer" */
-uint8_t buf1[64 * 64];
-uint8_t buf2[64 * 64];
+#define DISPWIDTH	64
+#define DISPHEIGHT	64
+
+uint8_t buf1[DISPWIDTH * DISPHEIGHT];
+uint8_t buf2[DISPWIDTH * DISPHEIGHT];
 uint8_t *draw_buf;
 uint8_t *display_buf;
 volatile uint8_t do_swap;
@@ -137,7 +142,7 @@ volatile uint8_t do_swap;
 void
 draw_pixel(int x, int y, uint16_t color)
 {
-	*(draw_buf + y * 64 + x) = color & 0x7;
+	*(draw_buf + y * DISPWIDTH + x) = color & 0x7;
 }
 
 static int current_pair = 0;
@@ -273,6 +278,12 @@ draw_24hr_clock(uint32_t tm)
 	do_swap++;
 }
 
+/*
+ * Construct the elements of a clock
+ *
+ * This includes the face, annotations, hour, minute, second and
+ * millesecond hands.
+ */
 void
 draw_clock(uint32_t tm)
 {
@@ -289,10 +300,15 @@ draw_clock(uint32_t tm)
 	ms = t->ms;
 
 
-	gfx_fillScreen(0);
-#ifdef GFX_CIRCLE
-	gfx_drawCircle(32,32,31, 2);
-#else
+	/* clear the buffer to 'black' */
+	memset(draw_buf, 0, DISPWIDTH * DISPHEIGHT);
+
+#if 0
+	printf("Time A: %s\n", time_string(tm));
+	printf("Time B: %02d:%02d:%02d.%03d\n", t->hh, t->mm, t->ss, t->ms);
+#endif
+
+	/* Draw the outer circle */
 #define CIRCLE_INC	5
 	for (i = 0; i < 360; i += CIRCLE_INC) {
 		x0 = 32.5 + 31.0 * (sin((float) i / 180.0 * M_PI));
@@ -301,7 +317,8 @@ draw_clock(uint32_t tm)
 		y1 = 32.5 + 31.0 * (cos((float) (i + CIRCLE_INC) / 180.0 * M_PI));
 		gfx_drawLine(x0, y0, x1, y1, 2);
 	}
-#endif
+
+	/* small font add numbers. */
 	gfx_setFont(GFX_FONT_SMALL);
 	gfx_setTextColor(4, 0);
 	gfx_setCursor(26, 11);
@@ -312,6 +329,8 @@ draw_clock(uint32_t tm)
 	gfx_puts((unsigned char *)"6");
 	gfx_setCursor(4, 36);
 	gfx_puts((unsigned char *)"9");
+
+	/* add the tick marks, long ones at 5 minute and short ones minute */
 	for (i = 1; i < 60; i++) {
 
 		if ((i == 0) || (i == 15) || (i == 30) || (i == 45)) {
@@ -327,15 +346,27 @@ draw_clock(uint32_t tm)
 			gfx_drawPixel(x1, y1, 1);
 		}
 	}
-	/* rotate hands */
-	gfx_drawLine(32, 32, 32 + 25 * (sin((float) ss/30.0 * M_PI)),
-						 32 - 25 * (cos((float) ss/30.0 * M_PI)), 5);
-	gfx_drawLine(32, 32, 32 + 20 * (sin((float) mm/30.0 * M_PI)),
-						 32 - 20 * (cos((float) mm/30.0 * M_PI)), 2);
-	gfx_drawLine(32, 32, 32 + 15 * (sin(((float) hh + (float) mm / 60.0) / 6.0 * M_PI)),
-						 32 - 15 * (cos(((float) hh + (float) mm / 60.0) / 6.0 * M_PI)), 3);
+
+	/* Draw hands, bottom to top. Start point is always the
+	 * center of the circle (32, 32)
+	 * Bottom: MS hand
+	 *		   Second hand
+	 *		   Minute hand
+	 *		   Hour hand
+	 */
 	gfx_drawLine(32, 32, 32 + 10 * (sin((float) ms/500.0 * M_PI)),
 						 32 - 10 * (cos((float) ms/500.0 * M_PI)), 1);
+#ifdef CONTINUOUS_SECONDS
+	gfx_drawLine(32, 32, 32 + 25 * (sin((float) (ss + (ms / 1000.0)) / 30.0 * M_PI)),
+						 32 - 25 * (cos((float) (ss + (ms / 1000.0)) / 30.0 * M_PI)), 5);
+#else
+	gfx_drawLine(32, 32, 32 + 25 * (sin((float) ss / 30.0 * M_PI)),
+						 32 - 25 * (cos((float) ss / 30.0 * M_PI)), 5);
+#endif
+	gfx_drawLine(32, 32, 32 + 20 * (sin((float) (mm + (ss / 60.0)) / 30.0 * M_PI)),
+						 32 - 20 * (cos((float) (mm + (ss / 60.0)) / 30.0 * M_PI)), 2);
+	gfx_drawLine(32, 32, 32 + 15 * (sin(((float) hh + (float) mm / 60.0) / 6.0 * M_PI)),
+						 32 - 15 * (cos(((float) hh + (float) mm / 60.0) / 6.0 * M_PI)), 3);
 	gfx_fillCircle(32,32,3,6);
 	do_swap++;
 }
@@ -440,13 +471,13 @@ main(void)
 	draw_buf = &buf1[0];
 	display_buf = &buf2[0];
 
-	gfx_init(draw_pixel, 64, 64, GFX_FONT_LARGE);
+	gfx_init(draw_pixel, DISPWIDTH, DISPHEIGHT, GFX_FONT_LARGE);
 	gfx_fillScreen(0);
 	gfx_setCursor(0, 12);
 	gfx_setTextColor(0x2, 0x0);
 	gfx_puts((unsigned char *) "1Bitsy");
 	gfx_setCursor(0, 24);
-	gfx_setTextColor(0x4, 0x0);
+	gfx_setTextColor(0x5, 0x0);
 	gfx_puts((unsigned char *) " @esden");
 	gfx_drawRoundRect(0, 0, 64, 64, 5, 1);
 	gfx_setCursor(4, 48); gfx_setTextColor(0x6, 0x0);
@@ -561,3 +592,41 @@ main(void)
 
 	}
 }
+
+/*
+ * time_string(uint32_t)
+ *
+ * Convert a number representing milliseconds into a 'time' string
+ * of HHH:MM:SS.mmm where HHH is hours, MM is minutes, SS is seconds
+ * and .mmm is fractions of a second.
+ *
+ * Uses a static buffer (not multi-thread friendly)
+ */
+unsigned char *
+time_string(uint32_t t)
+{
+    static unsigned char time_string[14];
+    uint16_t msecs = t % 1000;
+    uint8_t secs = (t / 1000) % 60;
+    uint8_t mins = (t / 60000) % 60;
+    uint16_t hrs = (t /3600000);
+
+    // HH:MM:SS.mmm\0
+    // 0123456789abc
+    time_string[0] = (hrs / 100) % 10 + '0';
+    time_string[1] = (hrs / 10) % 10 + '0';
+    time_string[2] = hrs % 10 + '0';
+    time_string[3] = ':';
+    time_string[4] = (mins / 10)  % 10 + '0';
+    time_string[5] = mins % 10 + '0';
+    time_string[6] = ':';
+    time_string[7] = (secs / 10)  % 10 + '0';
+    time_string[8] = secs % 10 + '0';
+    time_string[9] = '.';
+    time_string[10] = (msecs / 100) % 10 + '0';
+    time_string[11] = (msecs / 10) % 10 + '0';
+    time_string[12] = msecs % 10 + '0';
+    time_string[13] = 0;
+    return &time_string[0];
+}
+

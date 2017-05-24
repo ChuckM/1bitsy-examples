@@ -6,6 +6,7 @@
 int
 main(void)
 {
+	int i;
 	clock_setup();
 
 	rcc_periph_clock_enable(RCC_GPIOB);
@@ -14,6 +15,10 @@ main(void)
 	gpio_set(GPIOB, GPIO1);
 	while (1) {
 		gpio_toggle(GPIOB, GPIO0|GPIO1);
-		msleep(250);
+		for (i = 0; i < 1000000; i++) {
+			__NOP();
+		}
+
+/*		msleep(250); */
 	}
 }

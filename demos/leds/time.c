@@ -64,7 +64,7 @@ time_get(uint32_t tm) {
 	int	day, i;
 
 	/* now is the original date set + number of ms since boot */
-	now = __epoch + ((tm + 500) / 1000);
+	now = __epoch + (tm / 1000);
 	local_time.ms = tm % 1000;
 	local_time.yr = 2016 + (now / YEAR_SEC);
 
