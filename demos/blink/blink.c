@@ -6,19 +6,20 @@
 int
 main(void)
 {
-	int i;
 	clock_setup();
 
-	rcc_periph_clock_enable(RCC_GPIOB);
-	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0 | GPIO1);
+	/* 1Bitsy hooks the LED up to PORT A, Bit 8 */
+	rcc_periph_clock_enable(RCC_GPIOA);
+	gpio_mode_setup(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO8);
 
-	gpio_set(GPIOB, GPIO1);
 	while (1) {
-		gpio_toggle(GPIOB, GPIO0|GPIO1);
+		gpio_toggle(GPIOA, GPIO8);
+/*
 		for (i = 0; i < 1000000; i++) {
 			__NOP();
 		}
+*/
 
-/*		msleep(250); */
+		msleep(250); 
 	}
 }
